@@ -1,5 +1,10 @@
 # Teste Técnico Desenvolvedor(a) Python Júnior [REMOTO]
 
+Para observar o enunciado original do teste, clique no botão abaixo:
+
+<details><summary>Mostrar</summary>
+<p>
+
 Neste repositório você encontra o enunciado do teste técnico para a vaga de Desenvolvedor(a) Python Júnior [REMOTO] da [Instruct](https://instruct.com.br/)!
 Você provavelmente chegou aqui através da indicação de alguma pessoa da empresa após passar pelas [outras etapas](https://instruct.com.br/trabalhe-com-a-gente/processo-de-selecao/) do processo seletivo. Se este não for o seu caso e mesmo assim você implementar alguma solução para este exercício, ele não será avaliado.
 
@@ -128,3 +133,127 @@ Exemplo de aplicação rodando no localhost na porta 8000:
   - Descreva sua aplicação e os problemas que ela resolve.
   - Dê instruções de como executar os testes e a sua aplicação.
   - Documente os endpoints da API (ex.: Swagger).
+
+</p>
+</details>
+
+## IMPLEMENTAÇÃO
+
+A solução final do teste pode ser dividade em duas etapas, implementação da interface com a API do Github e implementação dos endpoints. 
+
+### Interface API Github
+
+No total foram implementadas 4 funções para acessar e retirar dados da API do Github. Todas as funções podem ser consultadas em:
+
+```
+/vough_backend/api/integrations/github.py
+```
+
+Cada uma das 4 funções será detalhada a seguir:
+
+Procura uma organização na API do Github e retorna a resposta;
+
+```
+{
+    def get_organization(self, login: str):
+        url = "{}/orgs/{}".format(self.API_URL, login)
+        r = requests.get(url, headers={"Authorization": "Basic {}".format(self.GITHUB_TOKEN)})
+        return r
+}
+```
+
+Procura pela lista de membros da organização na API e retorno o número de membros desta organização;
+```
+{
+    def get_organization_public_members(self, login: str) -> int:
+        url = "{}/orgs/{}/members".format(self.API_URL, login)
+        r = requests.get(url, headers={"Authorization": "Basic {}".format(self.GITHUB_TOKEN)})
+        return len(r.json())
+}
+```
+
+Procura por uma organização e retorna o número de repositório públicos dela;
+```
+{
+     def get_organization_public_repositories(self, login: str) -> int:
+        url = "{}/orgs/{}".format(self.API_URL, login)
+        r = requests.get(url, headers={"Authorization": "Basic {}".format(self.GITHUB_TOKEN)})
+        return r.json()["public_repos"]
+}
+```
+
+Procura pelos dados da organização na API e retorna a sua pontuação de acordo com a fórmula fornecida no enunciado.
+```
+{
+     def get_organization_score(self, login: str) -> int:
+        employees = self.get_organization_public_members(login)
+        repositories = self.get_organization_public_repositories(login)
+        priority = employees + repositories
+        return priority
+}
+```
+
+### Endpoints
+
+Para os endpoints foi implementado um total de 3 funções, cada uma destas funções pode ser consultada em:
+```
+/vough_backend/api/views.py
+```
+
+As funções implementadas são:
+
+Procura a organização na API do Github, se a organização é encontrada a função salva os dados da organização no dataset e retorna um dicionário com os dados e um status 200, caso contrário ela retorna um dicionário vazio e um status 404;
+```
+{
+     def retrieve(self, request, login=None):
+        api = GithubApi()
+        r = api.get_organization(login)
+
+        if r.status_code == status.HTTP_200_OK:
+            company = models.Organization(login, name=r.json()["name"], score=api.get_organization_score(login))
+            company.save()
+
+            serializer = serializers.OrganizationSerializer(company)
+            response = Response(serializer.data, status=r.status_code)
+        else:
+            response = Response({}, status=r.status_code)
+
+}
+```
+
+Procura a organização na API do Github, se a organização é encontrada a função salva os dados da organização no dataset e retorna um dicionário com os dados e um status 200, caso contrário ela retorna um dicionário vazio e um status 404;
+```
+{
+     def retrieve(self, request, login=None):
+        api = GithubApi()
+        r = api.get_organization(login)
+
+        if r.status_code == status.HTTP_200_OK:
+            company = models.Organization(login, name=r.json()["name"], score=api.get_organization_score(login))
+            company.save()
+
+            serializer = serializers.OrganizationSerializer(company)
+            response = Response(serializer.data, status=r.status_code)
+        else:
+            response = Response({}, status=r.status_code)
+
+}
+```
+
+Retorna um dicionário com os dados das organizações em ordem decrescente dos scores;
+```
+{
+   def list(self, request, login=None):
+        queryset = models.Organization.objects.all().order_by("-score")
+        serializer = serializers.OrganizationSerializer(queryset, many=True)
+        return Response(serializer.data) 
+}
+```
+
+Se a organização existe, ela é deletada do dataset e um status 204 é retornado, caso contrário um status 404 é retornado;
+```
+def destroy(self, request, login=None):
+        org = get_object_or_404(models.Organization, login=login)
+        org.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+```

@@ -85,6 +85,8 @@ venv.bak/
 .vscode/
 .env
 .idea/
+*.sublime-workspace
+*.sublime-project
 
 os
 schedule
