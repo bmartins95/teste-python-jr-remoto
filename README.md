@@ -221,25 +221,6 @@ Procura a organização na API do Github, se a organização é encontrada a fun
 }
 ```
 
-Procura a organização na API do Github, se a organização é encontrada a função salva os dados da organização no dataset e retorna um dicionário com os dados e um status 200, caso contrário ela retorna um dicionário vazio e um status 404;
-```
-{
-     def retrieve(self, request, login=None):
-        api = GithubApi()
-        r = api.get_organization(login)
-
-        if r.status_code == status.HTTP_200_OK:
-            company = models.Organization(login, name=r.json()["name"], score=api.get_organization_score(login))
-            company.save()
-
-            serializer = serializers.OrganizationSerializer(company)
-            response = Response(serializer.data, status=r.status_code)
-        else:
-            response = Response({}, status=r.status_code)
-
-}
-```
-
 Retorna um dicionário com os dados das organizações em ordem decrescente dos scores;
 ```
 {
